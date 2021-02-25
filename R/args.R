@@ -399,14 +399,12 @@ VariationalArgs <- R6::R6Class(
     method = "variational",
     initialize = function(algorithm = NULL,
                           iter = NULL,
+                          check_frequency = NULL,
+                          num_grid_points = NULL,
                           grad_samples = NULL,
                           elbo_samples = NULL,
                           eta = NULL,
-                          adapt_engaged = NULL,
-                          adapt_iter = NULL,
-                          eval_window = NULL,
-                          window_size = NULL,
-                          rhat_cut = NULL,
+                          min_window_size = NULL,
                           mcse_cut = NULL,
                           ess_cut = NULL,
                           num_chains = NULL,
@@ -416,19 +414,13 @@ VariationalArgs <- R6::R6Class(
       self$grad_samples <- grad_samples
       self$elbo_samples <- elbo_samples
       self$eta <- eta
-      self$eval_window <- eval_window
-      self$window_size <- window_size
-      self$rhat_cut <- rhat_cut
+      self$min_window_size <- min_window_size
       self$mcse_cut <- mcse_cut
       self$ess_cut <- ess_cut
       self$num_chains <- num_chains
       self$output_samples <- output_samples
-      self$adapt_iter <- adapt_iter
-      self$adapt_engaged <- adapt_engaged
-
-      if (is.logical(self$adapt_engaged)) {
-        self$adapt_engaged <- as.integer(self$adapt_engaged)
-      }
+      self$check_frequency <- check_frequency
+      self$num_grid_points <- num_grid_points
 
       invisible(self)
     },
@@ -451,17 +443,13 @@ VariationalArgs <- R6::R6Class(
         .make_arg("grad_samples"),
         .make_arg("elbo_samples"),
         .make_arg("eta"),
-        .make_arg("eval_window"),
-        .make_arg("window_size"),
-        .make_arg("rhat_cut"),
+        .make_arg("min_window_size"),
+        .make_arg("num_grid_points"),
+        .make_arg("check_frequency"),
         .make_arg("mcse_cut"),
         .make_arg("ess_cut"),
         .make_arg("num_chains"),
-        .make_arg("output_samples"),
-        if (!is.null(self$adapt_engaged) || !is.null(self$adapt_iter))
-          "adapt",
-        .make_arg("adapt_engaged"),
-        .make_arg("adapt_iter")
+        .make_arg("output_samples")
       )
       new_args <- do.call(c, new_args)
       c(args, new_args)
@@ -669,11 +657,6 @@ validate_variational_args <- function(self) {
   if (!is.null(self$elbo_samples)) {
     self$elbo_samples <- as.integer(self$elbo_samples)
   }
-  checkmate::assert_integerish(self$eval_window,  null.ok = TRUE,
-                               lower = 1, len = 1)
-  if (!is.null(self$eval_window)) {
-    self$eval_window <- as.integer(self$eval_window)
-  }
   checkmate::assert_integerish(self$num_chains,  null.ok = TRUE,
                                lower = 1, len = 1)
   if (!is.null(self$num_chains)) {
@@ -684,19 +667,7 @@ validate_variational_args <- function(self) {
   if (!is.null(self$output_samples)) {
     self$output_samples <- as.integer(self$output_samples)
   }
-  checkmate::assert_integerish(self$adapt_engaged, null.ok = TRUE,
-                               lower = 0, upper = 1, len = 1)
-  checkmate::assert_integerish(self$adapt_iter,
-                               lower = 1, len = 1,
-                               null.ok = TRUE)
-  if (!is.null(self$adapt_iter)) {
-    self$adapt_iter <- as.integer(self$adapt_iter)
-  }
   checkmate::assert_number(self$eta, null.ok = TRUE,
-                           lower = .Machine$double.eps)
-  checkmate::assert_number(self$window_size, null.ok = TRUE,
-                           lower = .Machine$double.eps)
-  checkmate::assert_number(self$rhat_cut, null.ok = TRUE,
                            lower = .Machine$double.eps)
   checkmate::assert_number(self$mcse_cut, null.ok = TRUE,
                            lower = .Machine$double.eps)
